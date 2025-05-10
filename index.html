@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Oscilloscope Demonstration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #f0f0f0;
+            line-height: 1.6;
+            padding: 15px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        h1 {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        @media (min-width: 768px) {
+            .main-container {
+                flex-direction: row;
+            }
+        }
+        
+        .oscilloscope-display {
+            flex-grow: 1;
+            background-color: #000;
+            border: 3px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+            /* More compact height */
+            height: 300px;
+            max-height: 300px;
+            position: relative;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        .controls-panel {
+            width: 100%;
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            padding: 12px;
+            overflow-y: auto;
+            /* More compact height to match oscilloscope */
+            max-height: 300px;
+        }
+        
+        @media (min-width: 768px) {
+            .controls-panel {
+                width: 260px;
+            }
+        }
+        
+        .control-section {
+            margin-bottom: 15px;
+        }
+        
+        h2 {
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        
+        h3 {
+            font-size: 14px;
+            margin-bottom: 6px;
+            color: #bbbbbb;
+        }
+        
+        .control-group {
+            margin-bottom: 8px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 3px;
+            font-size: 12px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            background-color: #333;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+            margin-bottom: 3px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+        }
+        
+        select {
+            width: 100%;
+            padding: 4px 6px;
+            border-radius: 4px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            outline: none;
+            font-size: 12px;
+        }
+        
+        .value-display {
+            text-align: right;
+            font-size: 11px;
+            color: #aaa;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 6px;
+        }
+        
+        button {
+            padding: 6px 10px;
+            background-color: #2962ff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 12px;
+        }
+        
+        button:hover {
+            background-color: #1e4bcc;
+        }
+        
+        button.stop {
+            background-color: #f44336;
+        }
+        
+        button.stop:hover {
+            background-color: #d32f2f;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        
+        .checkbox-group input {
+            margin-right: 6px;
+        }
+        
+        .help-section {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            /* More compact help section */
+            font-size: 12px;
+        }
+        
+        .help-list {
+            list-style-type: disc;
+            padding-left: 18px;
+            font-size: 12px;
+        }
+        
+        .help-list li {
+            margin-bottom: 3px;
+        }
+        
+        .help-list b {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Oscilloscope Demonstration</h1>
+        <div class="button-group">
+            <button id="toggle-controls">Hide Controls</button>
+            <button id="toggle-run" class="stop">Stop</button>
+        </div>
+    </header>
+    
+    <div class="main-container">
+        <div class="oscilloscope-display">
+            <canvas id="oscilloscope-canvas"></canvas>
+        </div>
+        
+        <div class="controls-panel" id="controls-panel">
+            <h2>Oscilloscope Controls</h2>
+            
+            <!-- Signal Controls -->
+            <div class="control-section">
+                <h3>Signal</h3>
+                
+                <div class="control-group">
+                    <label for="waveform">Waveform</label>
+                    <select id="waveform">
+                        <option value="sine">Sine</option>
+                        <option value="square">Square</option>
+                        <option value="triangle">Triangle</option>
+                        <option value="sawtooth">Sawtooth</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="frequency">Frequency (Hz)</label>
+                    <input type="range" id="frequency" min="0.1" max="10" step="0.1" value="1">
+                    <div class="value-display" id="frequency-value">1.0 Hz</div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="amplitude">Amplitude (V)</label>
+                    <input type="range" id="amplitude" min="0.5" max="5" step="0.5" value="3">
+                    <div class="value-display" id="amplitude-value">3.0 V</div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="noise">Noise</label>
+                    <input type="range" id="noise" min="0" max="0.5" step="0.01" value="0">
+                    <div class="value-display" id="noise-value">0%</div>
+                </div>
+            </div>
+            
+            <!-- Oscilloscope Controls -->
+            <div class="control-section">
+                <h3>Display</h3>
+                
+                <div class="control-group">
+                    <label for="time-scale">Time/div (s)</label>
+                    <input type="range" id="time-scale" min="0.1" max="2" step="0.1" value="1">
+                    <div class="value-display" id="time-scale-value">1.0 s/div</div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="volt-scale">Volts/div (V)</label>
+                    <input type="range" id="volt-scale" min="0.5" max="2" step="0.1" value="1">
+                    <div class="value-display" id="volt-scale-value">1.0 V/div</div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="horizontal-position">Horizontal Position</label>
+                    <input type="range" id="horizontal-position" min="-5" max="5" step="0.1" value="0">
+                </div>
+                
+                <div class="control-group">
+                    <label for="vertical-position">Vertical Position</label>
+                    <input type="range" id="vertical-position" min="-4" max="4" step="0.1" value="0">
+                </div>
+                
+                <div class="control-group">
+                    <label for="zoom">Zoom</label>
+                    <input type="range" id="zoom" min="0.5" max="3" step="0.1" value="1">
+                    <div class="value-display" id="zoom-value">x1.0</div>
+                </div>
+            </div>
+            
+            <!-- Trigger Controls -->
+            <div class="control-section">
+                <h3>Trigger</h3>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="show-trigger" checked>
+                    <label for="show-trigger">Enable Trigger</label>
+                </div>
+                
+                <div class="control-group" id="trigger-level-container">
+                    <label for="trigger-level">Trigger Level (V)</label>
+                    <input type="range" id="trigger-level" min="-3" max="3" step="0.1" value="0">
+                    <div class="value-display" id="trigger-level-value">0.0 V</div>
+                </div>
+            </div>
+            
+            <!-- Display Settings -->
+            <div class="control-section">
+                <h3>Settings</h3>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="show-grid" checked>
+                    <label for="show-grid">Show Grid</label>
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="show-measurements">
+                    <label for="show-measurements">Show Measurements</label>
+                </div>
+                
+                <div class="control-group">
+                    <label for="theme">Theme</label>
+                    <select id="theme">
+                        <option value="classic">Classic Green</option>
+                        <option value="modern">Modern Blue</option>
+                        <option value="light">Light Mode</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="help-section">
+        <h3>How to Use This Oscilloscope Simulator</h3>
+        <ul class="help-list">
+            <li>Adjust the <b>Signal</b> controls to change the waveform type, frequency, amplitude, and noise level</li>
+            <li>Use the <b>Display</b> controls to change time scale (seconds per division), voltage scale, and positioning</li>
+            <li>Enable <b>Trigger</b> to stabilize the waveform display and adjust the trigger level</li>
+            <li>Use <b>Show Measurements</b> to view signal parameters like frequency, period, and voltage</li>
+            <li>Try different <b>Themes</b> to change the display appearance</li>
+            <li>Click <b>Stop</b> to freeze the display for closer analysis</li>
+        </ul>
+    </div>
+
+    <script>
+        // DOM Elements
+        const canvas = document.getElementById('oscilloscope-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Controls
+        const waveformSelect = document.getElementById('waveform');
+        const frequencyInput = document.getElementById('frequency');
+        const frequencyDisplay = document.getElementById('frequency-value');
+        const amplitudeInput = document.getElementById('amplitude');
+        const amplitudeDisplay = document.getElementById('amplitude-value');
+        const noiseInput = document.getElementById('noise');
+        const noiseDisplay = document.getElementById('noise-value');
+        const timeScaleInput = document.getElementById('time-scale');
+        const timeScaleDisplay = document.getElementById('time-scale-value');
+        const voltScaleInput = document.getElementById('volt-scale');
+        const voltScaleDisplay = document.getElementById('volt-scale-value');
+        const horizontalPositionInput = document.getElementById('horizontal-position');
+        const verticalPositionInput = document.getElementById('vertical-position');
+        const zoomInput = document.getElementById('zoom');
+        const zoomDisplay = document.getElementById('zoom-value');
+        const showTriggerCheckbox = document.getElementById('show-trigger');
+        const triggerLevelInput = document.getElementById('trigger-level');
+        const triggerLevelDisplay = document.getElementById('trigger-level-value');
+        const triggerLevelContainer = document.getElementById('trigger-level-container');
+        const showGridCheckbox = document.getElementById('show-grid');
+        const showMeasurementsCheckbox = document.getElementById('show-measurements');
+        const themeSelect = document.getElementById('theme');
+        const toggleControlsButton = document.getElementById('toggle-controls');
+        const toggleRunButton = document.getElementById('toggle-run');
+        const controlsPanel = document.getElementById('controls-panel');
+        
+        // Oscilloscope state
+        let state = {
+            waveform: 'sine',
+            frequency: 1,
+            amplitude: 3,
+            timeScale: 1,
+            voltScale: 1,
+            horizontalPosition: 0,
+            verticalPosition: 0,
+            showTrigger: true,
+            triggerLevel: 0,
+            zoom: 1,
+            noiseLevel: 0,
+            showGrid: true,
+            showMeasurements: false,
+            running: true,
+            theme: 'classic',
+            startTime: Date.now(),
+            currentTime: 0
+        };
+        
+        // Themes
+        const themes = {
+            classic: {
+                background: '#000000',
+                grid: '#1a1a1a',
+                waveform: '#00ff00',
+                trigger: '#ff0000',
+                text: '#ffffff',
+                measurementBox: 'rgba(100, 100, 100, 0.7)'
+            },
+            modern: {
+                background: '#0a0a1a',
+                grid: '#222240',
+                waveform: '#20c0ff',
+                trigger: '#ff5050',
+                text: '#ffffff',
+                measurementBox: 'rgba(60, 60, 100, 0.7)'
+            },
+            light: {
+                background: '#f0f0f0',
+                grid: '#cccccc',
+                waveform: '#0066cc',
+                trigger: '#cc3333',
+                text: '#333333',
+                measurementBox: 'rgba(230, 230, 230, 0.9)'
+            }
+        };
+        
+        // Animation frame request ID
+        let animationId = null;
+        
+        // Initialize canvas size
+        function resizeCanvas() {
+            const displayContainer = canvas.parentElement;
+            canvas.width = displayContainer.clientWidth;
+            canvas.height = displayContainer.clientHeight;
+        }
+        
+        // Generate waveform data with fixed starting point
+        function generateWaveformData(time) {
+            const samples = 1000;
+            const data = [];
+            
+            // Find the period based on frequency
+            const period = 1 / state.frequency;
+            
+            // Adjust time to start at the beginning of a cycle
+            // This ensures the wave always starts at a consistent phase
+            const adjustedTime = (time + state.horizontalPosition) % period;
+            
+            for (let i = 0; i < samples; i++) {
+                // Calculate time for this sample, starting from phase 0
+                const t = adjustedTime + (i / samples) * 10 * state.timeScale;
+                let value = 0;
+                
+                switch (state.waveform) {
+                    case 'sine':
+                        // Start sine wave at 0 (not at -1 or mid-cycle)
+                        value = Math.sin(2 * Math.PI * state.frequency * t);
+                        break;
+                    case 'square':
+                        // Ensure square wave starts at high value
+                        value = Math.sign(Math.sin(2 * Math.PI * state.frequency * t));
+                        break;
+                    case 'triangle':
+                        // Ensure triangle wave starts at 0 and goes up
+                        value = Math.asin(Math.sin(2 * Math.PI * state.frequency * t)) * 2 / Math.PI;
+                        break;
+                    case 'sawtooth':
+                        // Ensure sawtooth starts at lowest point
+                        value = 2 * ((t * state.frequency) % 1) - 1;
+                        break;
+                    default:
+                        value = Math.sin(2 * Math.PI * state.frequency * t);
+                }
+                
+                // Add noise if enabled
+                if (state.noiseLevel > 0) {
+                    value += (Math.random() - 0.5) * state.noiseLevel * 2;
+                }
+                
+                // Scale by amplitude
+                value = value * state.amplitude;
+                
+                data.push(value);
+            }
+            
+            return data;
+        }
+        
+        // Draw oscilloscope
+        function drawOscilloscope() {
+            if (!state.running) return;
+            
+            // Calculate elapsed time
+            const now = Date.now();
+            const elapsed = (now - state.startTime) / 1000; // Convert to seconds
+            state.currentTime = elapsed;
+            
+            // Get current theme
+            const theme = themes[state.theme];
+            
+            // Clear canvas
+            ctx.fillStyle = theme.background;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid if enabled
+            if (state.showGrid) {
+                ctx.strokeStyle = theme.grid;
+                ctx.lineWidth = 1;
+                
+                // Vertical grid lines (time)
+                const timeDiv = canvas.width / 10;
+                for (let i = 0; i <= 10; i++) {
+                    const x = i * timeDiv;
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                    
+                    // Draw subdivisions
+                    if (i < 10) {
+                        for (let j = 1; j < 5; j++) {
+                            const subX = x + (timeDiv * j / 5);
+                            ctx.beginPath();
+                            ctx.moveTo(subX, 0);
+                            ctx.lineTo(subX, canvas.height);
+                            ctx.stroke();
+                        }
+                    }
+                }
+                
+                // Horizontal grid lines (voltage)
+                const voltDiv = canvas.height / 8;
+                for (let i = 0; i <= 8; i++) {
+                    const y = i * voltDiv;
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                    
+                    // Draw subdivisions
+                    if (i < 8) {
+                        for (let j = 1; j < 5; j++) {
+                            const subY = y + (voltDiv * j / 5);
+                            ctx.beginPath();
+                            ctx.moveTo(0, subY);
+                            ctx.lineTo(canvas.width, subY);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+            
+            // Calculate waveform data
+            const waveformData = generateWaveformData(state.currentTime);
+            
+            // Draw waveform
+            ctx.strokeStyle = theme.waveform;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            const scale = canvas.height / (8 * state.voltScale);
+            const center = canvas.height / 2 - state.verticalPosition * canvas.height / 8;
+            
+            const step = canvas.width / waveformData.length;
+            
+            // Draw the waveform
+            for (let i = 0; i < waveformData.length; i++) {
+                const x = i * step * state.zoom;
+                const value = waveformData[i];
+                const y = center - value * scale;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+                
+                // Stop drawing if we go beyond canvas width
+                if (x > canvas.width) break;
+            }
+            
+            ctx.stroke();
+            
+            // Draw trigger level line if enabled
+            if (state.showTrigger) {
+                ctx.strokeStyle = theme.trigger;
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 5]);
+                
+                const triggerY = center - state.triggerLevel * scale;
+                
+                ctx.beginPath();
+                ctx.moveTo(0, triggerY);
+                ctx.lineTo(canvas.width, triggerY);
+                ctx.stroke();
+                
+                ctx.setLineDash([]);
+                
+                // Draw trigger marker on the right
+                ctx.fillStyle = theme.trigger;
+                ctx.beginPath();
+                ctx.moveTo(canvas.width - 10, triggerY);
+                ctx.lineTo(canvas.width, triggerY - 5);
+                ctx.lineTo(canvas.width, triggerY + 5);
+                ctx.fill();
+            }
+            
+            // Display measurements if enabled
+            if (state.showMeasurements) {
+                ctx.fillStyle = theme.measurementBox;
+                ctx.fillRect(canvas.width - 180, 10, 170, 110);
+                
+                ctx.fillStyle = theme.text;
+                ctx.font = '11px monospace';
+                
+                // Calculate peak-to-peak voltage
+                let min = Infinity;
+                let max = -Infinity;
+                
+                for (const value of waveformData) {
+                    if (value < min) min = value;
+                    if (value > max) max = value;
+                }
+                
+                const vpp = max - min;
+                
+                // Calculate frequency
+                const calculatedFreq = state.frequency.toFixed(2);
+                
+                // Calculate period
+                const period = (1 / state.frequency).toFixed(4);
+                
+                ctx.fillText(`Frequency: ${calculatedFreq} Hz`, canvas.width - 170, 28);
+                ctx.fillText(`Period: ${period} s`, canvas.width - 170, 46);
+                ctx.fillText(`Vpp: ${vpp.toFixed(2)} V`, canvas.width - 170, 64);
+                ctx.fillText(`Vmin: ${min.toFixed(2)} V`, canvas.width - 170, 82);
+                ctx.fillText(`Vmax: ${max.toFixed(2)} V`, canvas.width - 170, 100);
+            }
+            
+            // Display time and voltage scales
+            ctx.fillStyle = theme.text;
+            ctx.font = '11px monospace';
+            ctx.fillText(`${state.timeScale} s/div`, 10, 18);
+            ctx.fillText(`${state.voltScale} V/div`, 10, 36);
+            
+            // If paused, show indicator
+            if (!state.running) {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+                ctx.font = 'bold 18px sans-serif';
+                ctx.fillText('STOPPED', canvas.width / 2 - 45, 28);
+            }
+            
+            // Request next frame
+            animationId = requestAnimationFrame(drawOscilloscope);
+        }
+        
+        // Update UI value displays
+        function updateValueDisplays() {
+            frequencyDisplay.textContent = `${state.frequency.toFixed(1)} Hz`;
+            amplitudeDisplay.textContent = `${state.amplitude.toFixed(1)} V`;
+            noiseDisplay.textContent = `${Math.round(state.noiseLevel * 100)}%`;
+            timeScaleDisplay.textContent = `${state.timeScale.toFixed(1)} s/div`;
+            voltScaleDisplay.textContent = `${state.voltScale.toFixed(1)} V/div`;
+            zoomDisplay.textContent = `x${state.zoom.toFixed(1)}`;
+            triggerLevelDisplay.textContent = `${state.triggerLevel.toFixed(1)} V`;
+            
+            // Update trigger level input range based on amplitude
+            triggerLevelInput.min = -state.amplitude;
+            triggerLevelInput.max = state.amplitude;
+            
+            // Show/hide trigger level controls
+            triggerLevelContainer.style.display = state.showTrigger ? 'block' : 'none';
+        }
+        
+        // Event Listeners
+        waveformSelect.addEventListener('change', (e) => {
+            state.waveform = e.target.value;
+            // Reset the timer when changing waveform to ensure it starts at the beginning
+            state.startTime = Date.now();
+        });
+        
+        frequencyInput.addEventListener('input', (e) => {
+            state.frequency = parseFloat(e.target.value);
+            updateValueDisplays();
+            // Reset the timer when changing frequency to ensure it starts at the beginning
+            state.startTime = Date.now();
+        });
+        
+        amplitudeInput.addEventListener('input', (e) => {
+            state.amplitude = parseFloat(e.target.value);
+            updateValueDisplays();
+        });
+        
+        noiseInput.addEventListener('input', (e) => {
+            state.noiseLevel = parseFloat(e.target.value);
+            updateValueDisplays();
+        });
+        
+        timeScaleInput.addEventListener('input', (e) => {
+            state.timeScale = parseFloat(e.target.value);
+            updateValueDisplays();
+        });
+        
+        voltScaleInput.addEventListener('input', (e) => {
+            state.voltScale = parseFloat(e.target.value);
+            updateValueDisplays();
+        });
+        
+        horizontalPositionInput.addEventListener('input', (e) => {
+            state.horizontalPosition = parseFloat(e.target.value);
+            // Reset the timer when changing horizontal position
+            state.startTime = Date.now();
+        });
+        
+        verticalPositionInput.addEventListener('input', (e) => {
+            state.verticalPosition = parseFloat(e.target.value);
+        });
+        
+        zoomInput.addEventListener('input', (e) => {
+            state.zoom = parseFloat(e.target.value);
+            updateValueDisplays();
+        });
+        
+        showTriggerCheckbox.addEventListener('change', (e) => {
+            state.showTrigger = e.target.checked;
+            updateValueDisplays();
+        });
+        
+        triggerLevelInput.addEventListener('input', (e) => {
+            state.triggerLevel = parseFloat(e.target.value);
+            updateValueDisplays();
+        });
+        
+        showGridCheckbox.addEventListener('change', (e) => {
+            state.showGrid = e.target.checked;
+        });
+        
+        showMeasurementsCheckbox.addEventListener('change', (e) => {
+            state.showMeasurements = e.target.checked;
+        });
+        
+        themeSelect.addEventListener('change', (e) => {
+            state.theme = e.target.value;
+        });
+        
+        toggleControlsButton.addEventListener('click', () => {
+            controlsPanel.style.display = controlsPanel.style.display === 'none' ? 'block' : 'none';
+            toggleControlsButton.textContent = controlsPanel.style.display === 'none' ? 'Show Controls' : 'Hide Controls';
+        });
+        
+        toggleRunButton.addEventListener('click', () => {
+            state.running = !state.running;
+            toggleRunButton.textContent = state.running ? 'Stop' : 'Run';
+            toggleRunButton.className = state.running ? 'stop' : '';
+            
+            if (state.running) {
+                // Reset start time to avoid jumps and ensure waveform starts at beginning
+                state.startTime = Date.now();
+                drawOscilloscope();
+            } else if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+                
+                // Draw one last frame to show STOPPED indicator
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+                ctx.font = 'bold 18px sans-serif';
+                ctx.fillText('STOPPED', canvas.width / 2 - 45, 28);
+            }
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            drawOscilloscope();
+        });
+        
+        // Initialize
+        function init() {
+            resizeCanvas();
+            updateValueDisplays();
+            drawOscilloscope();
+        }
+        
+        // Start the oscilloscope
+        init();
+    </script>
+</body>
+</html>
